@@ -20,6 +20,7 @@ class UserSeeder extends Seeder
             'name' => 'Admin User',
             'email' => 'admin@mail.com',
             'password' => Hash::make('admin'),
+            'balance' => rand(100, 1000),
         ]);
 
         User::factory(10)->create();

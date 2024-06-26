@@ -4,12 +4,22 @@ namespace App\Http\Controllers;
 
 use App\Jobs\UpdateWallet;
 use App\Models\Transaction;
+use GuzzleHttp\Client;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Facades\Http;
 
 class TransactionController extends Controller
 {
+    private $client;
+    private $bearerToken;
+
+    public function __construct()
+    {
+        $this->client = new Client();
+        $this->bearerToken = 'Bearer ' . base64_encode('Muhamad Syarif Hidayat');
+    }
+
     public function showDepositForm()
     {
         return view('page.deposit');
@@ -34,7 +44,8 @@ class TransactionController extends Controller
         // Call to third-party payment service
         $response = $this->callThirdPartyService($orderId, $amount);
 
-        if ($response['status'] == 1) {
+        // if ($response['status'] == 1) {
+        if ($response['status'] == 'completed') {
             // Dispatch job to update wallet
             UpdateWallet::dispatch($user->id, $amount, 'deposit');
 
@@ -82,11 +93,27 @@ class TransactionController extends Controller
 
         $response = Http::withHeaders([
             'Authorization' => 'Bearer ' . $encodedName,
-        ])->post('https://yourdomain.com/deposit', [
+            'Content-Type' => 'application/json',
+            'Accept' => '*/*',
+            'Accept-Encoding' => 'gzip, deflate, br',
+            'Connection' => 'keep-alive',
+        // ])->post('https://yourdomain.com/deposit', [
+        ])->post('http://payment-app.id:8080/deposit', [
             'order_id' => $orderId,
             'amount' => number_format($amount, 2, '.', ''),
             'timestamp' => $timestamp,
         ]);
+
+        // $response = $this->client->post('https://third-party-service.com/api/deposit', [
+        //     'headers' => [
+        //         'Authorization' => $this->bearerToken,
+        //     ],
+        //     'form_params' => [
+        //         'order_id' => $orderId,
+        //         'amount' => number_format($amount, 2, '.', ''),
+        //         'timestamp' => $timestamp,
+        //     ],
+        // ]);
 
         return $response->json();
     }

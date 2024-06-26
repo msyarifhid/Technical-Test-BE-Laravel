@@ -15,8 +15,8 @@
 
                         <!-- Email Address -->
                         <div>
-                            <x-input-label for="email" :value="__('Amount')" />
-                            <x-text-input id="email" class="block mt-1 w-full" type="number" name="amount" step="0.01" :value="old('amount')" required />
+                            <x-input-label for="amount" :value="__('Amount')" />
+                            <x-text-input id="amount" class="block mt-1 w-full" type="number" name="amount" :value="old('amount')" required />
                             <x-input-error :messages="$errors->get('amount')" class="mt-2" />
                         </div>
 
