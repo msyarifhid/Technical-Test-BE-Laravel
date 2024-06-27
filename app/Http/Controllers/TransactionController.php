@@ -12,24 +12,32 @@ use Illuminate\Support\Facades\Http;
 
 class TransactionController extends Controller
 {
-    private $client;
-
-    public function __construct()
-    {
-        $this->client = new Client();
-    }
-
+    /**
+     * Method show view
+     *
+     * @return void
+     */
     public function showDepositForm()
     {
         return view('page.deposit');
     }
 
+    /**
+     * Method show view
+     *
+     * @return void
+     */
     public function showWithdrawForm()
     {
         return view('page.withdraw');
     }
 
-    // Method for deposit
+    /**
+     * Method for deposit
+     *
+     * @param Request $request
+     * @return void
+     */
     public function deposit(Request $request)
     {
         $validated = $request->validate([
@@ -63,7 +71,12 @@ class TransactionController extends Controller
         }
     }
 
-    // Method for withdrawal
+    /**
+     * Method for withdrawal
+     *
+     * @param Request $request
+     * @return void
+     */
     public function withdraw(Request $request)
     {
         $validated = $request->validate([
@@ -101,7 +114,14 @@ class TransactionController extends Controller
         }
     }
 
-    // Function to call third-party service
+    /**
+     * Function to call third-party service
+     *
+     * @param [type] $user
+     * @param [type] $amount
+     * @param [type] $type
+     * @return void
+     */
     private function callThirdPartyService($user, $amount, $type)
     {
         // $url = "http://127.0.0.1:8080/" . $type;
