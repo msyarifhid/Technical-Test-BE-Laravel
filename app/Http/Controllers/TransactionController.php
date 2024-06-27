@@ -104,9 +104,8 @@ class TransactionController extends Controller
     // Function to call third-party service
     private function callThirdPartyService($user, $amount, $type)
     {
-        // $url = 'https://yourdomain.com/' . $type;
-        $url = $_SERVER['HTTP_ORIGIN'] . "/" . $type;
         // $url = "http://127.0.0.1:8080/" . $type;
+        $url = $_SERVER['HTTP_ORIGIN'] . "/" . $type;
         $timestamp = now()->timestamp;
         $order_id = uniqid();
         $authorization = base64_encode($user->name);
