@@ -21,9 +21,11 @@
                     <x-nav-link :href="route('withdraw.form')" :active="request()->routeIs('withdraw.form')">
                         {{ __('Withdraw') }}
                     </x-nav-link>
+                    @if (auth()->user()->is_admin == 1)
                     <x-nav-link :href="route('admin.transactions')" :active="request()->routeIs('admin.transactions')">
                         {{ __('Transactions') }}
                     </x-nav-link>
+                    @endif
                 </div>
             </div>
 

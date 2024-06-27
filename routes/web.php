@@ -35,7 +35,7 @@ Route::middleware('auth')->group(function () {
     Route::get('/withdraw', [TransactionController::class, 'showWithdrawForm'])->name('withdraw.form');
     Route::post('/withdraw', [TransactionController::class, 'withdraw'])->name('withdraw');
 
-    Route::get('/admin/transactions', [AdminController::class, 'showTransactions'])->name('admin.transactions');
+    Route::get('/admin/transactions', [AdminController::class, 'showTransactions'])->name('admin.transactions')->middleware('admin');
 });
 
 require __DIR__.'/auth.php';

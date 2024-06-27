@@ -4,20 +4,19 @@ namespace App\Http\Controllers;
 
 use App\Jobs\UpdateWallet;
 use App\Models\Transaction;
+use App\Models\Wallet;
 use GuzzleHttp\Client;
 use Illuminate\Http\Request;
-use Illuminate\Support\Facades\Auth;
+use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Http;
 
 class TransactionController extends Controller
 {
     private $client;
-    private $bearerToken;
 
     public function __construct()
     {
         $this->client = new Client();
-        $this->bearerToken = 'Bearer ' . base64_encode('Muhamad Syarif Hidayat');
     }
 
     public function showDepositForm()
@@ -33,88 +32,97 @@ class TransactionController extends Controller
     // Method for deposit
     public function deposit(Request $request)
     {
-        $request->validate([
-            'amount' => 'required|numeric|min:1',
+        $validated = $request->validate([
+            'amount' => 'required|numeric|min:0.01',
         ]);
 
-        $user = Auth::user();
-        $amount = $request->amount;
-        $orderId = uniqid(); // Generate a unique order ID
+        $user = auth()->user();
 
-        // Call to third-party payment service
-        $response = $this->callThirdPartyService($orderId, $amount);
+        DB::beginTransaction();
 
-        // if ($response['status'] == 1) {
-        if ($response['status'] == 'completed') {
-            // Dispatch job to update wallet
-            UpdateWallet::dispatch($user->id, $amount, 'deposit');
+        try {
+            // Third-party service integration
+            $response = $this->callThirdPartyService($user, $validated['amount'], 'deposit');
 
-            return response()->json(['message' => 'Deposit successful'], 200);
-        } else {
-            return response()->json(['message' => 'Deposit failed'], 400);
+            if ($response['status'] == 1) {
+                UpdateWallet::dispatch($user->id, $request['amount'], 'deposit');
+            } else {
+                Transaction::create([
+                    'user_id' => $user->id,
+                    'amount' => $validated['amount'],
+                    'type' => 'deposit',
+                    'status' => 'failed',
+                ]);
+            }
+
+            DB::commit();
+            return response()->json(['message' => 'Deposit successful']);
+        } catch (\Exception $e) {
+            DB::rollBack();
+            return response()->json(['message' => 'Deposit failed'], 500);
         }
     }
 
     // Method for withdrawal
     public function withdraw(Request $request)
     {
-        $request->validate([
-            'amount' => 'required|numeric|min:1',
+        $validated = $request->validate([
+            'amount' => 'required|numeric|min:0.01',
         ]);
 
-        $user = Auth::user();
-        $amount = $request->amount;
+        $user = auth()->user();
+        $wallet = Wallet::firstOrCreate(['user_id' => $user->id]);
 
-        if ($user->balance < $amount) {
+        if ($wallet->balance < $validated['amount']) {
             return response()->json(['message' => 'Insufficient balance'], 400);
         }
 
-        $orderId = uniqid(); // Generate a unique order ID
+        DB::beginTransaction();
+        try {
+            // Third-party service integration
+            $response = $this->callThirdPartyService($user, $validated['amount'], 'withdraw');
 
-        // Call to third-party payment service
-        $response = $this->callThirdPartyService($orderId, $amount);
+            if ($response['status'] == 1) {
+                UpdateWallet::dispatch($user->id, $validated['amount'], 'withdrawal');
+            } else {
+                Transaction::create([
+                    'user_id' => $user->id,
+                    'amount' => $validated['amount'],
+                    'type' => 'withdrawal',
+                    'status' => 'failed',
+                ]);
+            }
 
-        if ($response['status'] == 1) {
-            // Dispatch job to update wallet
-            UpdateWallet::dispatch($user->id, $amount, 'withdrawal');
-
-            return response()->json(['message' => 'Withdrawal successful'], 200);
-        } else {
-            return response()->json(['message' => 'Withdrawal failed'], 400);
+            DB::commit();
+            return response()->json(['message' => 'Withdrawal successful']);
+        } catch (\Exception $e) {
+            DB::rollBack();
+            return response()->json(['message' => 'Withdrawal failed'], 500);
         }
     }
 
     // Function to call third-party service
-    private function callThirdPartyService($orderId, $amount)
+    private function callThirdPartyService($user, $amount, $type)
     {
-        $fullName = "Muhamad Syarif Hidayat";
-        $encodedName = base64_encode($fullName);
-        $timestamp = now()->toIso8601String();
+        // $url = 'https://yourdomain.com/' . $type;
+        $url = $_SERVER['HTTP_ORIGIN'] . "/" . $type;
+        // $url = "http://127.0.0.1:8080/" . $type;
+        $timestamp = now()->timestamp;
+        $order_id = uniqid();
+        $authorization = base64_encode($user->name);
 
         $response = Http::withHeaders([
-            'Authorization' => 'Bearer ' . $encodedName,
+            'Authorization' => 'Bearer ' . $authorization,
             'Content-Type' => 'application/json',
-            'Accept' => '*/*',
-            'Accept-Encoding' => 'gzip, deflate, br',
-            'Connection' => 'keep-alive',
-        // ])->post('https://yourdomain.com/deposit', [
-        ])->post('http://payment-app.id:8080/deposit', [
-            'order_id' => $orderId,
-            'amount' => number_format($amount, 2, '.', ''),
+        ])->post($url, [
+            'order_id' => $order_id,
+            'amount' => $amount,
             'timestamp' => $timestamp,
         ]);
 
-        // $response = $this->client->post('https://third-party-service.com/api/deposit', [
-        //     'headers' => [
-        //         'Authorization' => $this->bearerToken,
-        //     ],
-        //     'form_params' => [
-        //         'order_id' => $orderId,
-        //         'amount' => number_format($amount, 2, '.', ''),
-        //         'timestamp' => $timestamp,
-        //     ],
-        // ]);
-
-        return $response->json();
+        return [
+            'status' => 1,
+            'data' => $response
+        ];
     }
 }

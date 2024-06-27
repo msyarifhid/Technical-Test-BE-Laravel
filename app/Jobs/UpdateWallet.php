@@ -4,6 +4,7 @@ namespace App\Jobs;
 
 use App\Models\Transaction;
 use App\Models\User;
+use App\Models\Wallet;
 use Illuminate\Bus\Queueable;
 use Illuminate\Contracts\Queue\ShouldBeUnique;
 use Illuminate\Contracts\Queue\ShouldQueue;
@@ -39,24 +40,28 @@ class UpdateWallet implements ShouldQueue
     public function handle()
     {
         DB::transaction(function () {
-            $user = User::lockForUpdate()->find($this->userId);
+            $user = User::find($this->userId);
+            $wallet = Wallet::where('user_id', $user->id)->lockForUpdate()->first();
 
-            if ($this->type == 'deposit') {
-                $user->balance += $this->amount;
-            } elseif ($this->type == 'withdrawal') {
-                if ($user->balance < $this->amount) {
-                    throw new \Exception('Insufficient balance');
+            if ($this->type === 'deposit') {
+                $wallet->balance += $this->amount;
+                $status = 'success';
+            } else {
+                if ($wallet->balance >= $this->amount) {
+                    $wallet->balance -= $this->amount;
+                    $status = 'success';
+                } else {
+                    $status = 'failed';
                 }
-                $user->balance -= $this->amount;
             }
 
-            $user->save();
+            $wallet->save();
 
             Transaction::create([
                 'user_id' => $this->userId,
-                'type' => $this->type,
                 'amount' => $this->amount,
-                'status' => 'completed',
+                'type' => $this->type,
+                'status' => $status,
             ]);
         });
     }

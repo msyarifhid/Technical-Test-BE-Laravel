@@ -21,9 +21,16 @@ class TransactionSeeder extends Seeder
         foreach ($users as $user) {
             Transaction::create([
                 'user_id' => $user->id,
+                'amount' => 500,
                 'type' => 'deposit',
-                'amount' => rand(100, 1000),
-                'status' => 'completed',
+                'status' => 'success',
+            ]);
+
+            Transaction::create([
+                'user_id' => $user->id,
+                'amount' => 200,
+                'type' => 'withdrawal',
+                'status' => 'success',
             ]);
         }
     }
